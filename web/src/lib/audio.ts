@@ -76,8 +76,15 @@ export class AudioPlayer {
     return this.ctx;
   }
 
+  /** Call during a user gesture so the AudioContext isn't blocked by autoplay policy. */
+  resume() {
+    const ctx = this.getCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+
   async enqueue(mp3Bytes: ArrayBuffer) {
     const ctx = this.getCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
     try {
       const buffer = await ctx.decodeAudioData(mp3Bytes);
       this.queue.push(buffer);

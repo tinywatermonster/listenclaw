@@ -152,7 +152,8 @@ export default function Home() {
   const wsRef = useRef<WsClient | null>(null);
   const micRef = useRef<MicCapture | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
-  const ttsBufferRef = useRef<string[]>([]);
+  const ttsBufferRef = useRef<string[]>([]);        // base64 strings per segment
+  const pttBufferRef = useRef<ArrayBuffer[]>([]);   // raw PCM chunks during PTT
   const currentAssistantIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const spaceDownRef = useRef(false);
@@ -241,14 +242,19 @@ export default function Home() {
         case 'tts_segment_done': {
           const chunks = ttsBufferRef.current.splice(0);
           if (chunks.length > 0) {
-            const combined = chunks.join('');
             try {
-              const binary = atob(combined);
-              const bytes = new Uint8Array(binary.length);
-              for (let i = 0; i < binary.length; i++) {
-                bytes[i] = binary.charCodeAt(i);
-              }
-              playerRef.current?.enqueue(bytes.buffer);
+              // Each chunk is independently base64-encoded — decode each then concatenate bytes
+              const arrays = chunks.map(b64 => {
+                const bin = atob(b64);
+                const arr = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                return arr;
+              });
+              const totalLen = arrays.reduce((s, a) => s + a.length, 0);
+              const mp3 = new Uint8Array(totalLen);
+              let off = 0;
+              for (const a of arrays) { mp3.set(a, off); off += a.length; }
+              playerRef.current?.enqueue(mp3.buffer);
             } catch (e) {
               console.error('TTS decode error:', e);
             }
@@ -281,12 +287,15 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [state.messages]);
 
-  // ─ Recording handlers ─
+  // ─ Recording handlers (PTT: accumulate locally, send on release) ─
   const startRecording = useCallback(async () => {
     if (isRecordingRef.current) return;
+    // Resume AudioContext during user gesture so autoplay policy doesn't block TTS
+    playerRef.current?.resume();
+    pttBufferRef.current = [];
     try {
       const mic = new MicCapture((pcm) => {
-        wsRef.current?.sendAudio(pcm);
+        pttBufferRef.current.push(pcm);
       });
       await mic.start();
       micRef.current = mic;
@@ -303,6 +312,19 @@ export default function Home() {
     micRef.current = null;
     isRecordingRef.current = false;
     setIsRecording(false);
+
+    // Concatenate all captured PCM chunks and send as one ptt_audio message
+    const chunks = pttBufferRef.current.splice(0);
+    if (chunks.length > 0) {
+      const totalLen = chunks.reduce((s, b) => s + b.byteLength, 0);
+      const combined = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const chunk of chunks) {
+        combined.set(new Uint8Array(chunk), offset);
+        offset += chunk.byteLength;
+      }
+      wsRef.current?.sendPttAudio(combined.buffer);
+    }
   }, []);
 
   // ─ Keyboard shortcuts ─

@@ -62,6 +62,18 @@ export class WsClient {
     this.ws.send(JSON.stringify({ type: 'audio', data: b64 }));
   }
 
+  sendPttAudio(pcm: ArrayBuffer) {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    const bytes = new Uint8Array(pcm);
+    let b64 = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      b64 += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    b64 = btoa(b64);
+    this.ws.send(JSON.stringify({ type: 'ptt_audio', data: b64 }));
+  }
+
   sendInterrupt() {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'interrupt' }));

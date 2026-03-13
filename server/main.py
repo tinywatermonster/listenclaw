@@ -256,6 +256,15 @@ class Session:
             if msg_type == "audio":
                 pcm = base64.b64decode(msg["data"])
                 await self.engine.push_audio(pcm)
+            elif msg_type == "ptt_audio":
+                # PTT mode: full utterance arrives at once — bypass VAD, process directly
+                pcm = base64.b64decode(msg["data"])
+                if self._speech_task and not self._speech_task.done():
+                    self._tts_cancel.set()
+                    self._speech_task.cancel()
+                self._tts_cancel = asyncio.Event()
+                await self._send({"type": "state", "state": "processing"})
+                self._speech_task = asyncio.create_task(self._handle_speech(pcm))
             elif msg_type == "interrupt":
                 await self.engine.interrupt()
             elif msg_type == "ping":
