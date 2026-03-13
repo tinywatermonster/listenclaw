@@ -56,10 +56,13 @@ class OpenClawAgent(BaseAgent):
         raw = stdout.decode().strip()
         try:
             data = json.loads(raw)
+            # Try common top-level keys first, then OpenClaw's result.payloads[0].text
+            payloads = data.get("result", {}).get("payloads", [])
             reply_text = (
                 data.get("response")
                 or data.get("text")
                 or data.get("content")
+                or (payloads[0].get("text") if payloads else None)
                 or raw
             )
         except json.JSONDecodeError:
