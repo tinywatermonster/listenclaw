@@ -22,7 +22,7 @@ edge-tts>=6.1.9
 soundfile>=0.12.1
 
 # Utils
-httpx>=0.27.0
+httpx[socks]>=0.27.0
 
 # CLI demo (optional, not needed for server)
 sounddevice>=0.4.6
