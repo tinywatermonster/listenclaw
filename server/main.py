@@ -35,6 +35,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from .config import load_config, get
 from .pipeline.core import AudioEngine, AudioEngineConfig, Event, State
@@ -72,6 +73,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ListenClaw", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── Session ───────────────────────────────────────────────────────────────────
