@@ -1,0 +1,61 @@
+server:
+  host: "0.0.0.0"
+  port: 8765
+
+audio:
+  sample_rate: 16000    # Hz，VAD 和 ASR 均使用 16kHz
+  chunk_ms: 30          # VAD 帧长，支持 10/20/30ms
+  vad_aggressiveness: 2 # webrtcvad 灵敏度 0-3，越大越激进
+
+asr:
+  provider: whisper     # whisper | azure | deepgram | funasr
+  whisper:
+    model: base         # tiny / base / small / medium / large-v3
+    language: zh        # 留空则自动检测
+    device: cpu         # cpu | cuda
+  azure:
+    subscription_key: ""
+    region: ""
+    language: "zh-CN"
+  deepgram:
+    api_key: ""
+    language: "zh"
+
+agent:
+  provider: openclaw    # openclaw | openai | claude | ollama
+  openclaw:
+    mode: cli           # cli | websocket
+    agent: main         # main | assistant | work-agent
+    cli_bin: openclaw   # openclaw 可执行文件路径
+    websocket_url: "ws://localhost:18789"
+    token: ""
+  openai:
+    api_key: ""
+    model: "gpt-4o"
+    base_url: ""        # 留空使用官方 endpoint
+  claude:
+    api_key: ""
+    model: "claude-sonnet-4-6"
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "llama3"
+
+tts:
+  provider: edge_tts    # edge_tts | openai | azure | cosyvoice
+  edge_tts:
+    voice: "zh-CN-XiaoxiaoNeural"
+    rate: "+0%"
+    volume: "+0%"
+  openai:
+    api_key: ""
+    voice: "alloy"      # alloy / echo / fable / onyx / nova / shimmer
+    model: "tts-1"
+  azure:
+    subscription_key: ""
+    region: ""
+    voice: "zh-CN-XiaoxiaoNeural"
+
+session:
+  continuous_conversation: true
+  follow_up_timeout: 8    # 秒：说完后多久还在听，超时回 idle
+  language: zh
