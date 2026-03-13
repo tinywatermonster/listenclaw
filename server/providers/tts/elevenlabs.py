@@ -66,7 +66,7 @@ class ElevenLabsTTS(BaseTTS):
         loop = asyncio.get_event_loop()
 
         def _stream():
-            return client.text_to_speech.convert_as_stream(
+            return client.text_to_speech.stream(
                 voice_id=voice_id,
                 text=text,
                 model_id=self._model_id,
