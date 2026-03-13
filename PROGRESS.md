@@ -53,8 +53,8 @@
 
 | # | 任务 | 状态 | 说明 |
 |---|------|------|------|
-| 4.1 | Next.js 前端 (Push-to-Talk + Pipeline 状态条) | ⬜ | |
-| 4.2 | Provider 配置面板 (侧边抽屉) | ⬜ | |
+| 4.1 | Next.js 前端 (Push-to-Talk + Pipeline 状态条) | ✅ | PTT 本地录音、状态条、对话气泡 |
+| 4.2 | Provider 配置面板 (侧边抽屉) | ✅ | 右侧抽屉，localStorage 保存 |
 | 4.3 | 手机 App 音频代理 | ⬜ | |
 | 4.4 | Docker Compose 完整部署 | ⬜ | |
 | 4.5 | OpenClaw skill 文件完善 | ⬜ | |
@@ -68,3 +68,4 @@
 | 2026-03-13 | Phase 1 完成 | 最小闭环跑通，骨架代码全部实现 |
 | 2026-03-13 | Phase 2 完成 | Barge-in、持续对话、句级流式 TTS、唤醒词模块、CLI demo |
 | 2026-03-13 | Phase 3 完成 | ElevenLabs TTS 适配；其余 adapter 开 issue 等社区提交 |
+| 2026-03-13 | Phase 4 前端完成 | Next.js PTT 前端上线；修复多句 TTS 播放、base64 decode、AudioContext autoplay |
