@@ -8,7 +8,7 @@ audio:
   vad_aggressiveness: 2 # webrtcvad 灵敏度 0-3，越大越激进
 
 asr:
-  provider: whisper     # whisper | azure | deepgram | funasr
+  provider: whisper     # whisper | elevenlabs | azure | deepgram | funasr
   whisper:
     model: base         # tiny / base / small / medium / large-v3
     language: zh        # 留空则自动检测
@@ -17,6 +17,10 @@ asr:
     subscription_key: ""
     region: ""
     language: "zh-CN"
+  elevenlabs:
+    api_key: ""
+    model_id: "scribe_v2"
+    language_code: "zh"   # 留空则自动检测
   deepgram:
     api_key: ""
     language: "zh"
