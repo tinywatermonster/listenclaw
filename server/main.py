@@ -95,6 +95,8 @@ class Session:
 
         # Cancellation token for TTS: replaced on each new utterance
         self._tts_cancel: asyncio.Event = asyncio.Event()
+        # Only one speech pipeline runs at a time; cancel previous on new input
+        self._speech_task: asyncio.Task | None = None
 
         audio_cfg = AudioEngineConfig(
             sample_rate=get(cfg, "audio", "sample_rate", default=16000),
@@ -115,8 +117,14 @@ class Session:
         if t == "state_change":
             await self._send({"type": "state", "state": event.data["state"]})
         elif t == "speech_end":
-            # Run speech handling as a background task so audio input stays live
-            asyncio.create_task(self._handle_speech(event.data["audio"]))
+            # Cancel any in-flight pipeline before starting new one
+            if self._speech_task and not self._speech_task.done():
+                self._tts_cancel.set()
+                self._speech_task.cancel()
+            self._tts_cancel = asyncio.Event()
+            self._speech_task = asyncio.create_task(
+                self._handle_speech(event.data["audio"])
+            )
         elif t == "interrupted":
             # Signal TTS coroutine to stop
             self._tts_cancel.set()

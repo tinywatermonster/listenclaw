@@ -56,8 +56,7 @@ class CLIDemo:
         self._audio_buf: deque = deque()
         self._ws = None
         self._current_state = "idle"
-        self._tts_buf = bytearray()
-        self._stream = None
+        self._play_queue: asyncio.Queue = asyncio.Queue()
 
     def _record_callback(self, indata, frames, time_info, status):
         if self._recording:
@@ -77,23 +76,35 @@ class CLIDemo:
                 except Exception:
                     break
 
-    async def _play_audio(self, data: bytes):
-        """Play MP3 audio bytes via pydub + sounddevice (uses system default output)."""
+    async def _playback_loop(self):
+        """Serial playback — consume queue one segment at a time."""
+        import sounddevice as sd
+        from pydub import AudioSegment
+        while True:
+            data = await self._play_queue.get()
+            try:
+                seg = AudioSegment.from_file(BytesIO(data), format="mp3")
+                rate = seg.frame_rate
+                pcm = seg.set_channels(1).set_sample_width(2)
+                arr = np.frombuffer(pcm.raw_data, dtype=np.int16).astype(np.float32) / 32768.0
+                sd.play(arr, rate)
+                while sd.get_stream().active:
+                    await asyncio.sleep(0.05)
+            except Exception as e:
+                sys.stderr.write(f"[demo] playback error: {e}\n")
+
+    def _clear_play_queue(self):
+        """Drain playback queue on interrupt."""
+        import sounddevice as sd
         try:
-            import sounddevice as sd
-            from pydub import AudioSegment
-            seg = AudioSegment.from_file(BytesIO(data), format="mp3")
-            rate = seg.frame_rate
-            pcm = seg.set_channels(1).set_sample_width(2)
-            arr = np.frombuffer(pcm.raw_data, dtype=np.int16).astype(np.float32) / 32768.0
-            sd.play(arr, rate)
-            # Poll stream state instead of blocking sd.wait() — avoids CoreAudio thread issues
-            while sd.get_stream().active:
-                await asyncio.sleep(0.05)
-        except ImportError:
-            sys.stderr.write("[demo] pydub/sounddevice not installed — skipping playback\n")
-        except Exception as e:
-            sys.stderr.write(f"[demo] playback error: {e}\n")
+            sd.stop()
+        except Exception:
+            pass
+        while not self._play_queue.empty():
+            try:
+                self._play_queue.get_nowait()
+            except Exception:
+                pass
 
     async def _receive_loop(self):
         tts_chunks = []
@@ -122,13 +133,13 @@ class CLIDemo:
                 if tts_chunks:
                     audio = b"".join(tts_chunks)
                     tts_chunks.clear()
-                    asyncio.create_task(self._play_audio(audio))
+                    await self._play_queue.put(audio)
 
             elif t == "tts_done":
                 if tts_chunks:
                     audio = b"".join(tts_chunks)
                     tts_chunks.clear()
-                    asyncio.create_task(self._play_audio(audio))
+                    await self._play_queue.put(audio)
 
             elif t == "error":
                 print(f"\n\033[31m[error] {msg['message']}\033[0m")
@@ -169,6 +180,7 @@ class CLIDemo:
                     self._recording = False
                     print(f"\r{_color('processing', '[PROCESSING]')} ✓ sent           ", end="", flush=True)
             elif ch == "i":
+                self._clear_play_queue()
                 await self._ws.send(json.dumps({"type": "interrupt"}))
                 print(f"\r{_color('listening', '[INTERRUPT]')}                   ", end="", flush=True)
             elif ch == "q":
@@ -197,6 +209,7 @@ class CLIDemo:
                     self._receive_loop(),
                     self._send_audio_loop(),
                     self._keyboard_loop(),
+                    self._playback_loop(),
                 )
 
 
