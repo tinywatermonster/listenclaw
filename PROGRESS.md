@@ -6,7 +6,7 @@
 
 ## 当前焦点
 
-**Phase 3 — 可插拔 Provider 适配**
+**Phase 4 — 前端 + 部署**
 
 ---
 
@@ -42,14 +42,10 @@
 
 | # | 任务 | 状态 | 说明 |
 |---|------|------|------|
-| 3.1 | OpenAI ASR (Whisper API) | ⬜ | |
-| 3.2 | Azure ASR | ⬜ | |
-| 3.3 | Deepgram ASR | ⬜ | |
-| 3.4 | OpenAI Agent adapter | ⬜ | |
-| 3.5 | Claude Agent adapter | ⬜ | |
-| 3.6 | Ollama Agent adapter | ⬜ | |
-| 3.7 | OpenAI TTS | ⬜ | |
-| 3.8 | ElevenLabs / Cartesia TTS | ⬜ | |
+| 3.1 | ElevenLabs TTS adapter | ✅ | 流式，multilingual v2，lazy load |
+| 3.2 | OpenAI TTS | 📋 | [issue #1](https://github.com/tinywatermonster/listenclaw/issues/1) |
+| 3.3 | OpenAI / Claude / Ollama agent | 📋 | [issue #2](https://github.com/tinywatermonster/listenclaw/issues/2) |
+| 3.4 | Deepgram / Azure ASR | 📋 | [issue #3](https://github.com/tinywatermonster/listenclaw/issues/3) |
 
 ---
 
@@ -71,3 +67,4 @@
 |------|--------|------|
 | 2026-03-13 | Phase 1 完成 | 最小闭环跑通，骨架代码全部实现 |
 | 2026-03-13 | Phase 2 完成 | Barge-in、持续对话、句级流式 TTS、唤醒词模块、CLI demo |
+| 2026-03-13 | Phase 3 完成 | ElevenLabs TTS 适配；其余 adapter 开 issue 等社区提交 |

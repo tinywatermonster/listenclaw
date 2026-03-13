@@ -16,6 +16,7 @@ numpy>=1.24.0
 
 # TTS
 edge-tts>=6.1.9
+# elevenlabs>=1.0.0  # optional, install if using ElevenLabs
 
 # Audio
 soundfile>=0.12.1

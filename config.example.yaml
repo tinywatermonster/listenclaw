@@ -41,7 +41,7 @@ agent:
     model: "llama3"
 
 tts:
-  provider: edge_tts    # edge_tts | openai | azure | cosyvoice
+  provider: edge_tts    # edge_tts | elevenlabs | openai | azure | cosyvoice
   edge_tts:
     voice: "zh-CN-XiaoxiaoNeural"
     rate: "+0%"
@@ -50,6 +50,12 @@ tts:
     api_key: ""
     voice: "alloy"      # alloy / echo / fable / onyx / nova / shimmer
     model: "tts-1"
+  elevenlabs:
+    api_key: ""
+    voice_id: "JBFqnCBsd6RMkjVDRZzb"   # George，换音色去 elevenlabs.io/voice-library 找 ID
+    model_id: "eleven_multilingual_v2"   # 支持中文
+    stability: 0.5
+    similarity_boost: 0.75
   azure:
     subscription_key: ""
     region: ""
