@@ -216,6 +216,8 @@ class Session:
                             return
                         encoded = base64.b64encode(chunk).decode()
                         await self._send({"type": "tts_chunk", "data": encoded})
+                    # Signal end of this sentence so client can play it immediately
+                    await self._send({"type": "tts_segment_done"})
                 except Exception as e:
                     logger.error("TTS error: %s", e)
                     await self._send({"type": "error", "message": f"TTS failed: {e}"})

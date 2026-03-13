@@ -118,6 +118,12 @@ class CLIDemo:
             elif t == "tts_chunk":
                 tts_chunks.append(base64.b64decode(msg["data"]))
 
+            elif t == "tts_segment_done":
+                if tts_chunks:
+                    audio = b"".join(tts_chunks)
+                    tts_chunks.clear()
+                    asyncio.create_task(self._play_audio(audio))
+
             elif t == "tts_done":
                 if tts_chunks:
                     audio = b"".join(tts_chunks)
