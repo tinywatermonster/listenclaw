@@ -9,7 +9,7 @@ Client → Server:
   {"type": "ping"}
 
 Server → Client:
-  {"type": "state",        "state": "idle|listening|processing|speaking|follow_up"}
+  {"type": "state",        "state": "idle|wake|listening|processing|speaking|follow_up"}
   {"type": "asr_result",   "text": "..."}
   {"type": "agent_chunk",  "text": "..."}   # streaming token
   {"type": "agent_done",   "text": "..."}   # full response
@@ -17,25 +17,31 @@ Server → Client:
   {"type": "tts_done"}
   {"type": "error",        "message": "..."}
   {"type": "pong"}
+
+Sentence-level streaming:
+  Agent tokens are buffered until a sentence boundary is found.
+  Each sentence is sent to TTS immediately — audio starts playing
+  before the full agent response is complete.
 """
 
 import asyncio
 import base64
 import json
 import logging
+import re
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from .config import load_config, get
-from .pipeline.core import AudioEngine, AudioEngineConfig, Event
+from .pipeline.core import AudioEngine, AudioEngineConfig, Event, State
 from .router.intent import IntentRouter
 
-# ── Providers (import triggers registration) ──────────────────────────────────
-from .providers.asr import whisper  # noqa: F401
-from .providers.agent import openclaw  # noqa: F401
-from .providers.tts import edge_tts  # noqa: F401
+# Providers (import triggers registration)
+from .providers.asr import whisper       # noqa: F401
+from .providers.agent import openclaw    # noqa: F401
+from .providers.tts import edge_tts     # noqa: F401
 
 from .providers.asr.base import get_provider as get_asr
 from .providers.agent.base import get_provider as get_agent
@@ -44,7 +50,8 @@ from .providers.tts.base import get_provider as get_tts
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("listenclaw")
 
-# ── App ────────────────────────────────────────────────────────────────────────
+# Sentence boundary pattern (Chinese + Latin punctuation)
+_SENTENCE_END = re.compile(r'[.!?。！？\n]')
 
 config: dict = {}
 
@@ -65,7 +72,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ListenClaw", lifespan=lifespan)
 
 
-# ── Session handler ───────────────────────────────────────────────────────────
+# ── Session ───────────────────────────────────────────────────────────────────
 
 class Session:
     def __init__(self, ws: WebSocket, cfg: dict):
@@ -74,7 +81,6 @@ class Session:
         self._continuous = get(cfg, "session", "continuous_conversation", default=True)
         self._follow_up_timeout = float(get(cfg, "session", "follow_up_timeout", default=8))
 
-        # Providers
         asr_name = get(cfg, "asr", "provider", default="whisper")
         agent_name = get(cfg, "agent", "provider", default="openclaw")
         tts_name = get(cfg, "tts", "provider", default="edge_tts")
@@ -82,9 +88,11 @@ class Session:
         self.asr = get_asr(asr_name)(get(cfg, "asr", asr_name) or {})
         self.agent = get_agent(agent_name)(get(cfg, "agent", agent_name) or {})
         self.tts = get_tts(tts_name)(get(cfg, "tts", tts_name) or {})
-
         self.router = IntentRouter(cfg)
         self.session_id: str | None = None
+
+        # Cancellation token for TTS: replaced on each new utterance
+        self._tts_cancel: asyncio.Event = asyncio.Event()
 
         audio_cfg = AudioEngineConfig(
             sample_rate=get(cfg, "audio", "sample_rate", default=16000),
@@ -104,21 +112,28 @@ class Session:
         t = event.type
         if t == "state_change":
             await self._send({"type": "state", "state": event.data["state"]})
-
         elif t == "speech_end":
-            await self._handle_speech(event.data["audio"])
-
+            # Run speech handling as a background task so audio input stays live
+            asyncio.create_task(self._handle_speech(event.data["audio"]))
         elif t == "interrupted":
+            # Signal TTS coroutine to stop
+            self._tts_cancel.set()
             await self._send({"type": "state", "state": "listening"})
+
+    # ── Speech pipeline ───────────────────────────────────────────────────
 
     async def _handle_speech(self, audio_bytes: bytes):
         sample_rate = get(self._cfg, "audio", "sample_rate", default=16000)
         audio_f32 = self.engine.pcm_to_float32(audio_bytes)
 
-        # ── ASR ──
+        # Reset barge-in token for this turn
+        self._tts_cancel = asyncio.Event()
+
+        # ── ASR ──────────────────────────────────────────────────────────
         try:
             asr_result = await self.asr.transcribe(audio_f32, sample_rate)
         except Exception as e:
+            logger.error("ASR error: %s", e)
             await self._send({"type": "error", "message": f"ASR failed: {e}"})
             await self.engine.on_speaking_end(continuous=False)
             return
@@ -134,34 +149,78 @@ class Session:
         await self._send({"type": "asr_result", "text": text})
         logger.info("ASR: %r", text)
 
-        # ── Agent ──
+        # ── Agent + sentence-level streaming TTS ─────────────────────────
+        # Agent tokens → sentence queue → TTS coroutine (runs concurrently)
+        sentence_queue: asyncio.Queue[str | None] = asyncio.Queue()
+        tts_task = asyncio.create_task(
+            self._stream_tts(sentence_queue, self._tts_cancel)
+        )
+
         full_response = ""
+        token_buf = ""
         try:
             async for chunk in self.agent.chat_stream(text, session_id=self.session_id):
+                if self._tts_cancel.is_set():
+                    break
                 full_response += chunk
+                token_buf += chunk
                 await self._send({"type": "agent_chunk", "text": chunk})
-        except Exception as e:
-            await self._send({"type": "error", "message": f"Agent failed: {e}"})
-            await self.engine.on_speaking_end(continuous=False)
-            return
 
+                # Flush on sentence boundary
+                while True:
+                    m = _SENTENCE_END.search(token_buf)
+                    if not m:
+                        break
+                    sentence = token_buf[: m.end()].strip()
+                    token_buf = token_buf[m.end():]
+                    if sentence:
+                        await sentence_queue.put(sentence)
+
+        except Exception as e:
+            logger.error("Agent error: %s", e)
+            await self._send({"type": "error", "message": f"Agent failed: {e}"})
+
+        # Flush remaining buffer
+        if token_buf.strip() and not self._tts_cancel.is_set():
+            await sentence_queue.put(token_buf.strip())
+
+        await sentence_queue.put(None)  # sentinel
         await self._send({"type": "agent_done", "text": full_response})
         logger.info("Agent: %r", full_response[:80])
 
-        # ── TTS ──
+        await tts_task
+
+        if not self._tts_cancel.is_set():
+            await self._send({"type": "tts_done"})
+            await self.engine.on_speaking_end(
+                continuous=self._continuous,
+                timeout=self._follow_up_timeout,
+            )
+        # If cancelled, audio engine already switched to LISTENING via interrupt()
+
+    async def _stream_tts(
+        self, queue: asyncio.Queue[str | None], cancel: asyncio.Event
+    ):
+        """Consume sentences from queue, synthesize and stream audio."""
         await self.engine.on_speaking_start()
         try:
-            async for chunk in self.tts.synthesize_stream(full_response):
-                encoded = base64.b64encode(chunk).decode()
-                await self._send({"type": "tts_chunk", "data": encoded})
-        except Exception as e:
-            await self._send({"type": "error", "message": f"TTS failed: {e}"})
+            while True:
+                sentence = await queue.get()
+                if sentence is None or cancel.is_set():
+                    break
+                try:
+                    async for chunk in self.tts.synthesize_stream(sentence):
+                        if cancel.is_set():
+                            return
+                        encoded = base64.b64encode(chunk).decode()
+                        await self._send({"type": "tts_chunk", "data": encoded})
+                except Exception as e:
+                    logger.error("TTS error: %s", e)
+                    await self._send({"type": "error", "message": f"TTS failed: {e}"})
+        except asyncio.CancelledError:
+            pass
 
-        await self._send({"type": "tts_done"})
-        await self.engine.on_speaking_end(
-            continuous=self._continuous,
-            timeout=self._follow_up_timeout,
-        )
+    # ── WebSocket message loop ────────────────────────────────────────────
 
     async def handle(self):
         while True:
@@ -174,14 +233,11 @@ class Session:
                 continue
 
             msg_type = msg.get("type", "")
-
             if msg_type == "audio":
                 pcm = base64.b64decode(msg["data"])
                 await self.engine.push_audio(pcm)
-
             elif msg_type == "interrupt":
                 await self.engine.interrupt()
-
             elif msg_type == "ping":
                 await self._send({"type": "pong"})
 
@@ -191,7 +247,7 @@ class Session:
         await self.tts.close()
 
 
-# ── WebSocket endpoint ────────────────────────────────────────────────────────
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket):
@@ -216,8 +272,6 @@ async def health():
         "tts": get(config, "tts", "provider"),
     }
 
-
-# ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     host = get(config, "server", "host", default="0.0.0.0")

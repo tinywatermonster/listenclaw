@@ -22,3 +22,11 @@ soundfile>=0.12.1
 
 # Utils
 httpx>=0.27.0
+
+# CLI demo (optional, not needed for server)
+sounddevice>=0.4.6
+pydub>=0.25.1
+simpleaudio>=1.0.4
+
+# Wake word (optional, install if needed)
+# openwakeword>=0.6.0

@@ -59,3 +59,9 @@ session:
   continuous_conversation: true
   follow_up_timeout: 8    # 秒：说完后多久还在听，超时回 idle
   language: zh
+  wake_word:
+    enabled: false            # true = 需要唤醒词才开始听
+    engine: openwakeword      # openwakeword | keyword
+    model: hey_jarvis         # openwakeword 模型名
+    threshold: 0.5
+    keyword: ""               # engine=keyword 时用，匹配 ASR 文本中的关键词

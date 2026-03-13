@@ -6,7 +6,7 @@
 
 ## 当前焦点
 
-**Phase 1 — 最小闭环**: mic → VAD → ASR → OpenClaw → TTS → speaker
+**Phase 3 — 可插拔 Provider 适配**
 
 ---
 
@@ -30,10 +30,11 @@
 
 | # | 任务 | 状态 | 说明 |
 |---|------|------|------|
-| 2.1 | 唤醒词集成 (openWakeWord / Porcupine) | ⬜ | |
-| 2.2 | 持续对话 follow-up window | ⬜ | 状态机扩展 |
-| 2.3 | Barge-in 打断 | ⬜ | TTS 播放中检测新语音 |
-| 2.4 | 流式 TTS 播报 | ⬜ | 首字节延迟优化 |
+| 2.1 | 唤醒词模块 (`pipeline/wake.py`) | ✅ | openWakeWord + keyword 两种模式，config 控制开关 |
+| 2.2 | 持续对话 follow-up window | ✅ | FOLLOW_UP 状态 + 超时回 IDLE |
+| 2.3 | Barge-in 打断 | ✅ | SPEAKING 时继续跑 VAD，连续 5 帧语音自动打断 |
+| 2.4 | 句级流式 TTS | ✅ | Agent token → 句子边界 → 立即 TTS，并行流水线 |
+| 2.5 | CLI demo (`scripts/demo_cli.py`) | ✅ | Push-to-talk + 颜色状态条 + 播放 TTS |
 
 ---
 
@@ -69,3 +70,4 @@
 | 时间 | 里程碑 | 内容 |
 |------|--------|------|
 | 2026-03-13 | Phase 1 完成 | 最小闭环跑通，骨架代码全部实现 |
+| 2026-03-13 | Phase 2 完成 | Barge-in、持续对话、句级流式 TTS、唤醒词模块、CLI demo |
