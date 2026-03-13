@@ -78,20 +78,19 @@ class CLIDemo:
                     break
 
     async def _play_audio(self, data: bytes):
-        """Play MP3 audio bytes via pydub + simpleaudio."""
+        """Play MP3 audio bytes via pydub + sounddevice (uses system default output)."""
         try:
+            import sounddevice as sd
             from pydub import AudioSegment
-            import simpleaudio as sa
             seg = AudioSegment.from_file(BytesIO(data), format="mp3")
-            pcm = seg.set_frame_rate(SAMPLE_RATE).set_channels(1).set_sample_width(2)
-            sa.play_buffer(
-                pcm.raw_data,
-                num_channels=1,
-                bytes_per_sample=2,
-                sample_rate=SAMPLE_RATE,
-            ).wait_done()
+            rate = seg.frame_rate
+            pcm = seg.set_channels(1).set_sample_width(2)
+            arr = np.frombuffer(pcm.raw_data, dtype=np.int16).astype(np.float32) / 32768.0
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: (sd.play(arr, rate), sd.wait())
+            )
         except ImportError:
-            sys.stderr.write("[demo] pydub/simpleaudio not installed — skipping playback\n")
+            sys.stderr.write("[demo] pydub/sounddevice not installed — skipping playback\n")
         except Exception as e:
             sys.stderr.write(f"[demo] playback error: {e}\n")
 
