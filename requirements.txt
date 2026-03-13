@@ -11,7 +11,7 @@ pyyaml>=6.0.1
 faster-whisper>=1.0.0
 
 # VAD
-webrtcvad>=2.0.10
+webrtcvad-wheels>=2.0.10  # use this instead of webrtcvad (Mac/Python 3.11 compatible)
 numpy>=1.24.0
 
 # TTS

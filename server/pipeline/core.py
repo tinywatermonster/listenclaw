@@ -15,6 +15,8 @@ speech frames are detected, the engine fires "interrupted" and returns to
 LISTENING — the session layer is responsible for cancelling the TTS stream.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections import deque
