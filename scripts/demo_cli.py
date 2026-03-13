@@ -86,9 +86,10 @@ class CLIDemo:
             rate = seg.frame_rate
             pcm = seg.set_channels(1).set_sample_width(2)
             arr = np.frombuffer(pcm.raw_data, dtype=np.int16).astype(np.float32) / 32768.0
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: (sd.play(arr, rate), sd.wait())
-            )
+            sd.play(arr, rate)
+            # Poll stream state instead of blocking sd.wait() — avoids CoreAudio thread issues
+            while sd.get_stream().active:
+                await asyncio.sleep(0.05)
         except ImportError:
             sys.stderr.write("[demo] pydub/sounddevice not installed — skipping playback\n")
         except Exception as e:
