@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ListenClaw — Open Voice AI Gateway</title>
+  <meta name="description" content="The open-source voice gateway that connects any microphone to any AI agent. Push-to-talk. Stream TTS. Plug-and-play providers." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080810;
+      --surface: #0f0f1a;
+      --surface2: #16162a;
+      --border: rgba(255,255,255,0.07);
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --green: #34d399;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 max(24px, calc((100vw - 1100px)/2));
+      height: 60px;
+      background: rgba(8,8,16,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a { color: var(--muted2); text-decoration: none; font-size: .875rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      display: flex; gap: 10px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 18px; border-radius: 8px; font-size: .85rem; font-weight: 600;
+      text-decoration: none; transition: all .2s; cursor: pointer; border: none;
+    }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted2); }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 0 24px rgba(99,102,241,.35); }
+    .btn-primary:hover { background: #818cf8; box-shadow: 0 0 32px rgba(99,102,241,.5); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,.18) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 60%, rgba(139,92,246,.1) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 14px; border-radius: 999px;
+      background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3);
+      font-size: .8rem; color: #a5b4fc; font-weight: 500;
+      margin-bottom: 28px;
+    }
+    .hero-badge::before { content: '●'; color: var(--green); font-size: .5rem; animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 60%, #c4b5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--muted2); max-width: 600px; margin: 0 auto 40px;
+      font-weight: 400; line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px; }
+
+    /* ── Pipeline viz ── */
+    .pipeline {
+      display: flex; align-items: center; gap: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px 28px;
+      max-width: 700px; width: 100%;
+      overflow-x: auto;
+    }
+    .pipe-step {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      flex: 1; min-width: 80px;
+    }
+    .pipe-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      background: var(--surface2); border: 1px solid var(--border);
+    }
+    .pipe-icon.active {
+      background: rgba(99,102,241,.15); border-color: rgba(99,102,241,.4);
+      box-shadow: 0 0 16px rgba(99,102,241,.2);
+    }
+    .pipe-label { font-size: .7rem; color: var(--muted); font-weight: 500; text-align: center; }
+    .pipe-arrow { color: var(--muted); font-size: 1rem; flex-shrink: 0; padding: 0 4px; margin-top: -16px; }
+
+    /* ── Section shared ── */
+    section { padding: 80px max(24px, calc((100vw - 1100px)/2)); }
+    .section-tag {
+      display: inline-block; font-size: .75rem; font-weight: 600;
+      color: var(--accent); letter-spacing: .1em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 700; letter-spacing: -0.025em; margin-bottom: 16px; }
+    .section-sub { color: var(--muted2); font-size: 1.05rem; max-width: 520px; line-height: 1.7; margin-bottom: 48px; }
+
+    /* ── Features ── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+    }
+    .feat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+      transition: border-color .25s, transform .25s;
+    }
+    .feat-card:hover { border-color: rgba(99,102,241,.35); transform: translateY(-3px); }
+    .feat-icon { font-size: 1.8rem; margin-bottom: 14px; }
+    .feat-title { font-weight: 600; font-size: 1rem; margin-bottom: 8px; }
+    .feat-desc { color: var(--muted2); font-size: .875rem; line-height: 1.65; }
+
+    /* ── Provider matrix ── */
+    .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .matrix-col { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .matrix-head {
+      padding: 16px 20px;
+      background: var(--surface2); border-bottom: 1px solid var(--border);
+      font-weight: 700; font-size: .9rem; display: flex; align-items: center; gap: 8px;
+    }
+    .matrix-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 20px; border-bottom: 1px solid var(--border);
+      font-size: .875rem;
+    }
+    .matrix-item:last-child { border-bottom: none; }
+    .badge-done { color: var(--green); font-size: .75rem; font-weight: 600; }
+    .badge-plan { color: var(--muted); font-size: .75rem; }
+
+    /* ── Quickstart ── */
+    .quickstart { background: var(--surface2); }
+    .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; margin-bottom: 40px; }
+    .step { display: flex; gap: 16px; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.35);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .85rem; color: #a5b4fc;
+    }
+    .step-title { font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
+    .step-desc { color: var(--muted2); font-size: .85rem; }
+
+    pre {
+      background: #0a0a14; border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 24px; overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace; font-size: .85rem; line-height: 1.7;
+    }
+    .c-comment { color: #4b5563; }
+    .c-cmd { color: #a5b4fc; }
+    .c-str { color: #34d399; }
+
+    /* ── Language toggle ── */
+    .lang-toggle {
+      display: flex; gap: 0; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      margin-bottom: 48px;
+    }
+    .lang-btn {
+      padding: 8px 20px; font-size: .85rem; font-weight: 500;
+      cursor: pointer; border: none; background: transparent; color: var(--muted2);
+      transition: all .2s;
+    }
+    .lang-btn.active { background: var(--accent); color: #fff; }
+
+    /* ── GitHub CTA ── */
+    .cta-section {
+      text-align: center;
+      background: radial-gradient(ellipse 80% 100% at 50% 50%, rgba(99,102,241,.08) 0%, transparent 70%);
+      border-top: 1px solid var(--border);
+    }
+    .star-count {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: .9rem; font-weight: 600; margin-bottom: 32px;
+    }
+    .star-icon { color: #fbbf24; font-size: 1.1rem; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 32px max(24px, calc((100vw - 1100px)/2));
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    footer p { color: var(--muted); font-size: .85rem; }
+    footer a { color: var(--muted2); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .matrix-grid { grid-template-columns: 1fr; }
+      .pipeline { padding: 16px; }
+    }
+
+    /* ── i18n ── */
+    [data-lang="zh"] { display: none; }
+    body.zh [data-lang="en"] { display: none; }
+    body.zh [data-lang="zh"] { display: block; }
+    body.zh .lang-btn[data-l="en"] { background: transparent; color: var(--muted2); }
+    body.zh .lang-btn[data-l="zh"] { background: var(--accent); color: #fff; }
+    .lang-btn[data-l="en"] { background: var(--accent); color: #fff; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Listen<span>Claw</span></div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#providers">Providers</a></li>
+    <li><a href="#quickstart">Quick Start</a></li>
+    <li><a href="https://github.com/tinywatermonster/listenclaw">Docs</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="https://github.com/tinywatermonster/listenclaw" class="btn btn-ghost">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      GitHub
+    </a>
+    <a href="https://github.com/tinywatermonster/listenclaw" class="btn btn-primary">
+      ⭐ Star
+    </a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-badge">Open Source · MIT License · v0.1</div>
+
+  <h1 data-lang="en">The Open Voice<br/>AI Gateway</h1>
+  <h1 data-lang="zh">开源语音 AI 网关</h1>
+
+  <p class="hero-sub" data-lang="en">
+    Connect any microphone to any AI agent in under 5 minutes.<br/>
+    Push-to-talk, streaming TTS, plug-and-play providers — self-hosted and open.
+  </p>
+  <p class="hero-sub" data-lang="zh">
+    5 分钟内，让任何麦克风接入任何 AI Agent。<br/>
+    按键通话、流式 TTS、可插拔 Provider — 完全自托管，完全开源。
+  </p>
+
+  <div class="hero-actions">
+    <a href="https://github.com/tinywatermonster/listenclaw" class="btn btn-primary">
+      ⭐ Star on GitHub
+    </a>
+    <a href="#quickstart" class="btn btn-ghost" data-lang="en">Quick Start →</a>
+    <a href="#quickstart" class="btn btn-ghost" data-lang="zh">快速开始 →</a>
+  </div>
+
+  <div class="lang-toggle">
+    <button class="lang-btn" data-l="en" onclick="setLang('en')">English</button>
+    <button class="lang-btn" data-l="zh" onclick="setLang('zh')">中文</button>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-icon active">🎙</div>
+      <div class="pipe-label">Mic / 麦克风</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon active">🔤</div>
+      <div class="pipe-label">ASR</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon active">🧠</div>
+      <div class="pipe-label">Agent</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon active">🔊</div>
+      <div class="pipe-label">TTS</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon active">🎧</div>
+      <div class="pipe-label">Speaker / 耳机</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section id="features">
+  <div class="section-tag" data-lang="en">Why ListenClaw</div>
+  <div class="section-tag" data-lang="zh">为什么选择 ListenClaw</div>
+  <h2 data-lang="en">Everything a voice AI needs.<br/>Nothing it doesn't.</h2>
+  <h2 data-lang="zh">语音 AI 需要的一切，<br/>没有多余的复杂度。</h2>
+
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-title" data-lang="en">Sentence-level Streaming TTS</div>
+      <div class="feat-title" data-lang="zh">句级流式 TTS</div>
+      <div class="feat-desc" data-lang="en">Audio starts playing before the agent finishes thinking. Each sentence is synthesized and streamed immediately — zero perceptible lag.</div>
+      <div class="feat-desc" data-lang="zh">AI 还没回答完，声音已经开始播放。每个句子立即合成、立即播出，延迟几乎为零。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔌</div>
+      <div class="feat-title" data-lang="en">Plug-and-Play Providers</div>
+      <div class="feat-title" data-lang="zh">可插拔 Provider</div>
+      <div class="feat-desc" data-lang="en">Switch between Whisper, ElevenLabs, OpenAI, and more by changing one line in config.yaml. No code changes required.</div>
+      <div class="feat-desc" data-lang="zh">修改 config.yaml 的一行，即可切换 ASR / Agent / TTS Provider，无需改代码。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">✋</div>
+      <div class="feat-title" data-lang="en">Barge-in Interruption</div>
+      <div class="feat-title" data-lang="zh">Barge-in 打断</div>
+      <div class="feat-desc" data-lang="en">Start talking mid-response to instantly interrupt the AI. Natural conversation flow — just like talking to a human.</div>
+      <div class="feat-desc" data-lang="zh">AI 说话时直接开口，自动打断并处理你的新输入，像真实对话一样流畅。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🤖</div>
+      <div class="feat-title" data-lang="en">OpenClaw-First Design</div>
+      <div class="feat-title" data-lang="zh">OpenClaw 优先</div>
+      <div class="feat-desc" data-lang="en">Built with OpenClaw as the primary agent backend. CLI and WebSocket modes supported. Also works with OpenAI, Claude, and Ollama.</div>
+      <div class="feat-desc" data-lang="zh">以 OpenClaw 为核心 Agent，支持 CLI 和 WebSocket 两种接入模式，也兼容 OpenAI / Claude / Ollama。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🌐</div>
+      <div class="feat-title" data-lang="en">Modern Web UI</div>
+      <div class="feat-title" data-lang="zh">现代 Web 界面</div>
+      <div class="feat-desc" data-lang="en">Next.js 14 frontend with push-to-talk, real-time pipeline status, streaming chat bubbles, and a settings drawer. No app install needed.</div>
+      <div class="feat-desc" data-lang="zh">基于 Next.js 的 Web 界面，按键说话、实时状态条、流式对话气泡、设置侧边栏，浏览器直接打开。</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <div class="feat-title" data-lang="en">Fully Self-Hosted</div>
+      <div class="feat-title" data-lang="zh">完全自托管</div>
+      <div class="feat-desc" data-lang="en">Your voice never leaves your server unless you choose a cloud provider. Run fully local with Whisper + Ollama + Edge-TTS.</div>
+      <div class="feat-desc" data-lang="zh">语音数据留在你自己的服务器上。选择 Whisper + Ollama + Edge-TTS 可完全本地运行，零云端依赖。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROVIDERS ── -->
+<section id="providers" style="background: var(--surface2);">
+  <div class="section-tag" data-lang="en">Provider Matrix</div>
+  <div class="section-tag" data-lang="zh">Provider 支持矩阵</div>
+  <h2 data-lang="en">Your stack, your choice.</h2>
+  <h2 data-lang="zh">你的技术栈，你来选。</h2>
+  <p class="section-sub" data-lang="en">Mix and match ASR, Agent, and TTS providers freely. One config file controls everything.</p>
+  <p class="section-sub" data-lang="zh">ASR、Agent、TTS 自由组合，一个配置文件搞定一切。</p>
+
+  <div class="matrix-grid">
+    <div class="matrix-col">
+      <div class="matrix-head">🎤 <span data-lang="en">ASR (Speech-to-Text)</span><span data-lang="zh">ASR 语音识别</span></div>
+      <div class="matrix-item"><span>Whisper (local)</span><span class="badge-done">✅ Done</span></div>
+      <div class="matrix-item"><span>ElevenLabs Scribe</span><span class="badge-done">✅ Done</span></div>
+      <div class="matrix-item"><span>Azure Speech</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>Deepgram</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>FunASR (local)</span><span class="badge-plan">📋 Planned</span></div>
+    </div>
+    <div class="matrix-col">
+      <div class="matrix-head">🧠 <span data-lang="en">Agent (LLM)</span><span data-lang="zh">Agent 大模型</span></div>
+      <div class="matrix-item"><span>OpenClaw</span><span class="badge-done">✅ Done</span></div>
+      <div class="matrix-item"><span>OpenAI GPT</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>Claude (Anthropic)</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>Ollama (local)</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>Custom HTTP</span><span class="badge-plan">📋 Planned</span></div>
+    </div>
+    <div class="matrix-col">
+      <div class="matrix-head">🔊 <span data-lang="en">TTS (Text-to-Speech)</span><span data-lang="zh">TTS 语音合成</span></div>
+      <div class="matrix-item"><span>Edge-TTS (free)</span><span class="badge-done">✅ Done</span></div>
+      <div class="matrix-item"><span>ElevenLabs</span><span class="badge-done">✅ Done</span></div>
+      <div class="matrix-item"><span>OpenAI TTS</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>Azure TTS</span><span class="badge-plan">📋 Planned</span></div>
+      <div class="matrix-item"><span>CosyVoice (local)</span><span class="badge-plan">📋 Planned</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── QUICKSTART ── -->
+<section id="quickstart" class="quickstart">
+  <div class="section-tag" data-lang="en">Quick Start</div>
+  <div class="section-tag" data-lang="zh">快速开始</div>
+  <h2 data-lang="en">Up and running in 3 steps.</h2>
+  <h2 data-lang="zh">三步启动，5 分钟跑通。</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title" data-lang="en">Clone & Configure</div>
+        <div class="step-title" data-lang="zh">克隆 & 配置</div>
+        <div class="step-desc" data-lang="en">Copy the example config and add your API keys</div>
+        <div class="step-desc" data-lang="zh">复制配置模板，填入你的 API Key</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title" data-lang="en">Docker Compose Up</div>
+        <div class="step-title" data-lang="zh">Docker Compose 一键启动</div>
+        <div class="step-desc" data-lang="en">One command starts backend + frontend</div>
+        <div class="step-desc" data-lang="zh">一条命令同时启动后端和前端</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title" data-lang="en">Open & Talk</div>
+        <div class="step-title" data-lang="zh">打开 & 说话</div>
+        <div class="step-desc" data-lang="en">Open localhost:3000, hold Space, start talking</div>
+        <div class="step-desc" data-lang="zh">打开 localhost:3000，按住空格，开始说话</div>
+      </div>
+    </div>
+  </div>
+
+<pre><span class="c-comment"># 1. Clone</span>
+<span class="c-cmd">git clone</span> <span class="c-str">https://github.com/tinywatermonster/listenclaw</span>
+<span class="c-cmd">cd</span> listenclaw
+
+<span class="c-comment"># 2. Configure (add your API keys)</span>
+<span class="c-cmd">cp</span> config.example.yaml config.yaml
+<span class="c-cmd">nano</span> config.yaml
+
+<span class="c-comment"># 3. Launch</span>
+<span class="c-cmd">docker compose up</span>
+
+<span class="c-comment"># Open http://localhost:3000 and hold Space to talk</span></pre>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section" style="padding: 100px max(24px, calc((100vw - 1100px)/2));">
+  <div class="star-count">
+    <span class="star-icon">⭐</span>
+    <span data-lang="en">If you find this useful, a star means a lot!</span>
+    <span data-lang="zh">如果你觉得有用，点个 Star 支持一下！</span>
+  </div>
+  <h2 data-lang="en" style="margin-bottom:12px">Build your own voice AI today.</h2>
+  <h2 data-lang="zh" style="margin-bottom:12px">今天就搭建你自己的语音 AI。</h2>
+  <p style="color:var(--muted2);margin-bottom:36px;max-width:480px;margin-left:auto;margin-right:auto;" data-lang="en">Open source, MIT licensed. Contributions welcome.</p>
+  <p style="color:var(--muted2);margin-bottom:36px;max-width:480px;margin-left:auto;margin-right:auto;" data-lang="zh">MIT 开源协议，欢迎贡献代码。</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="https://github.com/tinywatermonster/listenclaw" class="btn btn-primary">⭐ Star on GitHub</a>
+    <a href="https://github.com/tinywatermonster/listenclaw/issues" class="btn btn-ghost" data-lang="en">Open an Issue</a>
+    <a href="https://github.com/tinywatermonster/listenclaw/issues" class="btn btn-ghost" data-lang="zh">提交 Issue</a>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 ListenClaw · MIT License · <a href="https://github.com/tinywatermonster/listenclaw">GitHub</a></p>
+  <p style="color:var(--muted);font-size:.8rem;" data-lang="en">Built with FastAPI · Next.js · WebSockets</p>
+  <p style="color:var(--muted);font-size:.8rem;" data-lang="zh">基于 FastAPI · Next.js · WebSockets 构建</p>
+</footer>
+
+<script>
+  function setLang(l) {
+    document.body.classList.toggle('zh', l === 'zh');
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.l === l));
+  }
+  // Auto-detect Chinese browser
+  if (navigator.language.startsWith('zh')) setLang('zh');
+</script>
+</body>
+</html>
