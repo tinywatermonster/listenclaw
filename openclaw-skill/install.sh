@@ -1,13 +1,29 @@
 #!/bin/bash
-# ListenClaw OpenClaw Skill 一键安装
+# ListenClaw OpenClaw Skill installer
+# Usage: bash install.sh [agent-name]
+# Default agent: main
 
-SKILL_DIR="${HOME}/.openclaw/skills"
-SKILL_FILE="${SKILL_DIR}/listenclaw.md"
+AGENT="${1:-main}"
+
+if [ "$AGENT" = "main" ]; then
+  WORKSPACE="${HOME}/.openclaw/workspace"
+else
+  WORKSPACE="${HOME}/.openclaw/workspace-${AGENT}"
+fi
+
+SKILL_DIR="${WORKSPACE}/skills/listenclaw"
+
+if [ ! -d "$WORKSPACE" ]; then
+  echo "Error: workspace not found at $WORKSPACE"
+  echo "Usage: bash install.sh [agent-name]"
+  echo "Available agents: main (default), assistant, work-agent, ..."
+  exit 1
+fi
 
 mkdir -p "$SKILL_DIR"
 
-curl -fsSL https://raw.githubusercontent.com/tinywatermonster/listenclaw/main/openclaw-skill/listenclaw.md \
-  -o "$SKILL_FILE"
+curl -fsSL https://raw.githubusercontent.com/tinywatermonster/listenclaw/main/openclaw-skill/SKILL.md \
+  -o "${SKILL_DIR}/SKILL.md"
 
-echo "✅ ListenClaw skill 已安装到 $SKILL_FILE"
-echo "重启 OpenClaw 后生效。"
+echo "ListenClaw skill installed to ${SKILL_DIR}/SKILL.md"
+echo "Restart OpenClaw or reload the agent for the skill to take effect."
