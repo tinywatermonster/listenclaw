@@ -109,7 +109,8 @@ class OpenClawAgent(BaseAgent):
     # ── Public interface ──────────────────────────────────────────────────
 
     async def chat(self, text: str, session_id: str | None = None) -> AgentResponse:
-        logger.debug("OpenClaw [%s] <- %r", self._mode, text)
+        tagged = f"[ListenClaw] {text}"
+        logger.debug("OpenClaw [%s] <- %r", self._mode, tagged)
         if self._mode == "websocket":
-            return await self._chat_ws(text, session_id)
-        return await self._chat_cli(text, session_id)
+            return await self._chat_ws(tagged, session_id)
+        return await self._chat_cli(tagged, session_id)
