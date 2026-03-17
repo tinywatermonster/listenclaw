@@ -109,7 +109,11 @@ class OpenClawAgent(BaseAgent):
     # ── Public interface ──────────────────────────────────────────────────
 
     async def chat(self, text: str, session_id: str | None = None) -> AgentResponse:
-        tagged = f"[ListenClaw] {text}"
+        tagged = (
+            f"[ListenClaw] 这条消息来自 ListenClaw 语音网关，"
+            f"用户只能收听 TTS 音频，请用自然口语回答，不要使用任何 Markdown 格式、表格或列表。"
+            f"用户说：{text}"
+        )
         logger.debug("OpenClaw [%s] <- %r", self._mode, tagged)
         if self._mode == "websocket":
             return await self._chat_ws(tagged, session_id)
