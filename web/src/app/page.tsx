@@ -11,6 +11,7 @@ type Message = {
   role: 'user' | 'assistant';
   text: string;
   streaming: boolean;
+  thinking?: boolean;
 };
 
 type AppState = {
@@ -27,7 +28,7 @@ type Action =
   | { type: 'SET_PIPELINE_STATE'; state: PipelineState }
   | { type: 'SET_ASR_TEXT'; text: string }
   | { type: 'PUSH_USER_MESSAGE'; text: string }
-  | { type: 'START_ASSISTANT_MESSAGE'; id: string }
+  | { type: 'START_ASSISTANT_MESSAGE'; id: string; thinking?: boolean }
   | { type: 'APPEND_ASSISTANT_CHUNK'; id: string; text: string }
   | { type: 'FINISH_ASSISTANT_MESSAGE'; id: string; text: string }
   | { type: 'SET_WS_URL'; url: string }
@@ -57,14 +58,14 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [
           ...state.messages,
-          { id: action.id, role: 'assistant', text: '', streaming: true },
+          { id: action.id, role: 'assistant', text: '', streaming: true, thinking: action.thinking ?? false },
         ],
       };
     case 'APPEND_ASSISTANT_CHUNK':
       return {
         ...state,
         messages: state.messages.map(m =>
-          m.id === action.id ? { ...m, text: m.text + action.text } : m
+          m.id === action.id ? { ...m, text: m.text + action.text, thinking: false } : m
         ),
       };
     case 'FINISH_ASSISTANT_MESSAGE':
@@ -209,10 +210,15 @@ export default function Home() {
           dispatch({ type: 'SET_QUEUED_COUNT', count: event.position });
           break;
 
-        case 'asr_result':
+        case 'asr_result': {
           dispatch({ type: 'SET_ASR_TEXT', text: event.text });
           dispatch({ type: 'PUSH_USER_MESSAGE', text: event.text });
+          // Pre-create assistant bubble in "thinking" state
+          const thinkingId = `assistant-${Date.now()}`;
+          currentAssistantIdRef.current = thinkingId;
+          dispatch({ type: 'START_ASSISTANT_MESSAGE', id: thinkingId, thinking: true });
           break;
+        }
 
         case 'agent_chunk': {
           if (!currentAssistantIdRef.current) {
@@ -517,9 +523,19 @@ export default function Home() {
                 }
               `}
             >
-              {msg.text || (msg.streaming ? '' : '…')}
-              {msg.streaming && (
-                <span className="inline-block w-0.5 h-3.5 bg-current rounded-sm ml-0.5 animate-[blink_1s_ease-in-out_infinite] opacity-80" />
+              {msg.thinking ? (
+                <span className="flex items-center gap-1 opacity-50">
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+                </span>
+              ) : (
+                <>
+                  {msg.text || (msg.streaming ? '' : '…')}
+                  {msg.streaming && (
+                    <span className="inline-block w-0.5 h-3.5 bg-current rounded-sm ml-0.5 animate-[blink_1s_ease-in-out_infinite] opacity-80" />
+                  )}
+                </>
               )}
             </div>
             {msg.role === 'user' && (
