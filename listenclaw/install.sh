@@ -22,8 +22,8 @@ fi
 
 mkdir -p "$SKILL_DIR"
 
-curl -fsSL https://raw.githubusercontent.com/tinywatermonster/listenclaw/main/openclaw-skill/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/tinywatermonster/listenclaw/main/listenclaw/SKILL.md \
   -o "${SKILL_DIR}/SKILL.md"
 
 echo "ListenClaw skill installed to ${SKILL_DIR}/SKILL.md"
-echo "Restart OpenClaw or reload the agent for the skill to take effect."
+echo "Run: bash ~/.openclaw/restart-gateway.sh"

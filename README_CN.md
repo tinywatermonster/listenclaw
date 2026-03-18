@@ -153,7 +153,7 @@ listenclaw/
 │       ├── app/               # 页面
 │       ├── components/        # VoiceButton、对话气泡、PipelineStatus、ProviderPanel
 │       └── lib/               # WebSocket client、音频工具
-├── openclaw-skill/
+├── listenclaw/
 │   ├── listenclaw.md          # OpenClaw skill 定义
 │   └── install.sh             # 一键安装脚本
 ├── config.yaml                # 你的配置文件（已 gitignore）
@@ -170,7 +170,7 @@ ListenClaw 天生是 [OpenClaw](https://openclaw.ai) 的语音层。如果你已
 
 ```bash
 # 将 ListenClaw skill 安装到 OpenClaw
-bash openclaw-skill/install.sh
+bash listenclaw/install.sh
 
 # 启动语音网关
 docker compose up server

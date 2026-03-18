@@ -155,7 +155,7 @@ listenclaw/
 │       ├── app/               # Pages
 │       ├── components/        # VoiceButton, Bubbles, PipelineStatus, ProviderPanel
 │       └── lib/               # WebSocket client, audio utils
-├── openclaw-skill/
+├── listenclaw/
 │   ├── listenclaw.md          # OpenClaw skill definition
 │   └── install.sh             # One-command install
 ├── config.yaml                # Your config (gitignored)
@@ -172,7 +172,7 @@ ListenClaw is built to be the voice layer for [OpenClaw](https://openclaw.ai). I
 
 ```bash
 # Install the ListenClaw skill into OpenClaw
-bash openclaw-skill/install.sh
+bash listenclaw/install.sh
 
 # Start the voice gateway
 docker compose up server
