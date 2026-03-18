@@ -118,8 +118,14 @@ export class AudioPlayer {
     this.queue = [];
     this.playing = false;
     this.nextStart = 0;
+    // Do NOT close the AudioContext — on iOS Safari a closed context cannot be
+    // resumed without a new user gesture, causing TTS to silently fail.
+    this.onPlayStateChange?.(false);
+  }
+
+  dispose() {
+    this.stop();
     this.ctx?.close();
     this.ctx = null;
-    this.onPlayStateChange?.(false);
   }
 }
