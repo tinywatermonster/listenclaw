@@ -132,15 +132,13 @@ const DEFAULT_SETTINGS: Settings = {
 
 function loadSettings(): Settings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-  // Always derive a fresh default from current hostname (handles mobile access)
-  const freshDefault = { ...DEFAULT_SETTINGS, wsUrl: defaultWsUrl() };
   try {
     const raw = localStorage.getItem('listenclaw_settings');
-    if (raw) return { ...freshDefault, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
   } catch {
     // ignore
   }
-  return freshDefault;
+  return DEFAULT_SETTINGS;
 }
 
 function saveSettings(s: Settings) {
@@ -181,8 +179,10 @@ export default function Home() {
   // ─ Init settings from localStorage ─
   useEffect(() => {
     const s = loadSettings();
-    setSettings(s);
-    dispatch({ type: 'SET_WS_URL', url: s.wsUrl });
+    // If wsUrl is still the default localhost, replace with actual hostname
+    const wsUrl = s.wsUrl === DEFAULT_SETTINGS.wsUrl ? defaultWsUrl() : s.wsUrl;
+    setSettings({ ...s, wsUrl });
+    dispatch({ type: 'SET_WS_URL', url: wsUrl });
   }, []);
 
   // ─ Audio player ─
