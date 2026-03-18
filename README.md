@@ -6,7 +6,9 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED.svg)](https://docs.docker.com/compose/)
 
-### The open voice gateway that connects any microphone to any AI agent
+### The open-source voice gateway framework — microphone to AI agent in one pipeline
+
+**Keywords:** voice assistant framework · speech-to-text · text-to-speech · AI agent voice interface · OpenClaw · Whisper · ElevenLabs · self-hosted voice AI · push-to-talk · real-time streaming TTS · local LLM voice · FastAPI WebSocket audio
 
 > 🎬 Demo coming soon — [watch on YouTube](...)
 
@@ -106,9 +108,9 @@ tts:
 | Provider | Status | Notes |
 |----------|--------|-------|
 | **OpenClaw** | ✅ Done | Primary — CLI & WebSocket modes |
-| **OpenAI** | 📋 Planned | GPT-4o, tool use supported |
-| **Claude** | 📋 Planned | Anthropic API |
-| **Ollama** | 📋 Planned | Fully local LLM fallback |
+| **OpenAI** | ✅ Done | GPT-4o-mini default, native streaming, custom base_url |
+| **Claude** | ✅ Done | claude-haiku default, Anthropic messages API |
+| **Ollama** | ✅ Done | llama3.2 default, fully local, zero API cost |
 
 ### TTS (Text-to-Speech)
 

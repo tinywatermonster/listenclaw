@@ -1,0 +1,79 @@
+# ListenClaw
+
+## Summary
+
+ListenClaw is an open-source voice gateway framework that connects any microphone to any AI agent. It handles the full speech pipeline: audio capture → ASR (speech-to-text) → intent routing → AI agent → TTS (text-to-speech) → audio output.
+
+It is designed as a pluggable middleware layer. Users configure providers via a single `config.yaml` file with no code changes required.
+
+## Primary use cases
+
+- Adding a voice interface to an existing AI agent (OpenClaw, OpenAI, Claude, Ollama)
+- Building a self-hosted voice assistant with local models (Whisper + Ollama + Edge-TTS)
+- Creating voice-controlled hardware devices that relay commands to AI agents
+- Prototyping voice-first AI applications with real-time streaming
+
+## Tech stack
+
+- Backend: Python 3.11+, FastAPI, WebSocket, asyncio
+- Frontend: Next.js 14, TailwindCSS, Web Audio API (AudioWorklet)
+- Deployment: Docker Compose
+
+## Supported providers
+
+ASR (speech-to-text):
+- Whisper (local, via faster-whisper) — default
+- ElevenLabs Scribe v2 (cloud)
+- Azure Speech (planned)
+- Deepgram (planned)
+- FunASR (planned, optimized for Mandarin Chinese)
+
+Agent (AI brain):
+- OpenClaw — primary, CLI subprocess and WebSocket modes
+- OpenAI (GPT-4o, GPT-4o-mini, any model) — native streaming
+- Anthropic Claude (claude-haiku, claude-sonnet, any model) — native streaming
+- Ollama (llama3.2, qwen, mistral, any local model) — native streaming
+
+TTS (text-to-speech):
+- Edge-TTS (free, 300+ voices, multilingual) — default
+- ElevenLabs (multilingual v2, streaming)
+- OpenAI TTS (planned)
+- Azure Neural TTS (planned)
+- CosyVoice (planned, optimized for Chinese)
+
+## Key features
+
+- Push-to-talk (PTT) mode: client accumulates audio locally, sends as a single chunk on release, bypasses VAD
+- Sentence-level streaming TTS: agent tokens are split at sentence boundaries and synthesized immediately, audio starts before the full response is ready
+- Utterance queue: multiple utterances are serialized; no dropped input
+- Barge-in / interrupt: user can interrupt AI mid-speech
+- OpenClaw skill: a SKILL.md file that instructs OpenClaw to respond in spoken language (no markdown) when called via ListenClaw
+- All messages to OpenClaw are prefixed with a context prompt so responses are TTS-friendly without requiring skill installation
+
+## Repository structure
+
+- `server/` — FastAPI backend, WebSocket entry point, pipeline, providers
+- `server/providers/asr/` — ASR adapters (whisper, elevenlabs)
+- `server/providers/agent/` — Agent adapters (openclaw, openai, claude, ollama)
+- `server/providers/tts/` — TTS adapters (edge_tts, elevenlabs)
+- `server/pipeline/core.py` — Audio engine, VAD, state machine
+- `web/` — Next.js 14 frontend with PTT button, pipeline status bar, chat bubbles
+- `openclaw-skill/` — OpenClaw skill definition and installer
+- `config.example.yaml` — Full configuration reference
+- `docker-compose.yml` — One-command deployment
+
+## Quick start
+
+```bash
+git clone https://github.com/tinywatermonster/listenclaw
+cp config.example.yaml config.yaml
+# edit config.yaml with API keys
+docker compose up
+# open http://localhost:3000
+```
+
+## Links
+
+- GitHub: https://github.com/tinywatermonster/listenclaw
+- Landing page: https://tinywatermonster.github.io/listenclaw/
+- License: MIT

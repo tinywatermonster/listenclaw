@@ -106,9 +106,9 @@ tts:
 | Provider | 状态 | 说明 |
 |----------|------|------|
 | **OpenClaw** | ✅ 已完成 | 核心 — 支持 CLI 与 WebSocket 两种模式 |
-| **OpenAI** | 📋 规划中 | GPT-4o，支持工具调用 |
-| **Claude** | 📋 规划中 | Anthropic API |
-| **Ollama** | 📋 规划中 | 完全本地化 LLM 回退方案 |
+| **OpenAI** | ✅ 已完成 | GPT-4o-mini 默认，原生流式，支持自定义 base_url |
+| **Claude** | ✅ 已完成 | claude-haiku 默认，Anthropic messages API |
+| **Ollama** | ✅ 已完成 | llama3.2 默认，完全本地，零 API 费用 |
 
 ### TTS（文字转语音）
 
