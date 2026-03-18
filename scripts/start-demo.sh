@@ -12,8 +12,10 @@ python -m uvicorn server.main:app --host 0.0.0.0 --port 8765 &
 BACKEND_PID=$!
 
 # ── Frontend (with WS proxy) ──────────────────────────────────────────────────
-echo "[2/3] Starting frontend + WS proxy on :3000..."
+echo "[2/3] Building frontend..."
 cd "$ROOT/web"
+npm run build 2>&1 | tail -5
+echo "Starting frontend + WS proxy on :3000..."
 node server-proxy.mjs &
 FRONTEND_PID=$!
 

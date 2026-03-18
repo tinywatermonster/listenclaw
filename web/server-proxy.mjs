@@ -10,7 +10,7 @@ const hostname = process.env.HOSTNAME || '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 const backendPort = parseInt(process.env.BACKEND_PORT || '8765', 10);
 
-const app = next({ dev: true, hostname, port, turbopack: false });
+const app = next({ dev: false, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
