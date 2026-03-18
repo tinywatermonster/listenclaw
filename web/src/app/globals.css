@@ -68,6 +68,13 @@ body {
   touch-action: none;
 }
 
+@media (max-width: 640px) {
+  .mic-btn {
+    width: 112px;
+    height: 112px;
+  }
+}
+
 .mic-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;

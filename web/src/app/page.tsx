@@ -115,6 +115,13 @@ interface Settings {
   ttsProvider: string;
 }
 
+function defaultWsUrl(): string {
+  if (typeof window === 'undefined') return 'ws://localhost:8765/ws';
+  const host = window.location.hostname;
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${host}:8765/ws`;
+}
+
 const DEFAULT_SETTINGS: Settings = {
   wsUrl: 'ws://localhost:8765/ws',
   asrProvider: 'whisper',
@@ -125,13 +132,15 @@ const DEFAULT_SETTINGS: Settings = {
 
 function loadSettings(): Settings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  // Always derive a fresh default from current hostname (handles mobile access)
+  const freshDefault = { ...DEFAULT_SETTINGS, wsUrl: defaultWsUrl() };
   try {
     const raw = localStorage.getItem('listenclaw_settings');
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) return { ...freshDefault, ...JSON.parse(raw) };
   } catch {
     // ignore
   }
-  return DEFAULT_SETTINGS;
+  return freshDefault;
 }
 
 function saveSettings(s: Settings) {
