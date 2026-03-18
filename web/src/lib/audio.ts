@@ -1,5 +1,6 @@
 // MicCapture: getUserMedia → AudioWorklet → resample to 16kHz → int16 → callback
-// AudioPlayer: queue MP3 blobs → decodeAudioData → AudioBufferSourceNode serial playback
+// AudioPlayer: queue MP3 blobs → AudioContext.decodeAudioData → BufferSourceNode serial playback
+//   resume() MUST be called inside a user gesture (PTT press) to unlock iOS AudioContext.
 
 export class MicCapture {
   private ctx: AudioContext | null = null;
@@ -59,49 +60,80 @@ export class MicCapture {
 }
 
 export class AudioPlayer {
-  private queue: string[] = []; // object URLs of MP3 blobs
+  private ctx: AudioContext | null = null;
+  private queue: ArrayBuffer[] = [];
   private playing = false;
-  private current: HTMLAudioElement | null = null;
+  private currentSource: AudioBufferSourceNode | null = null;
   private onPlayStateChange?: (playing: boolean) => void;
 
   constructor(onPlayStateChange?: (playing: boolean) => void) {
     this.onPlayStateChange = onPlayStateChange;
   }
 
-  /** No-op — HTML5 Audio doesn't need AudioContext gesture unlock. */
-  resume() {}
+  /**
+   * Call during a user gesture (PTT press) to unlock AudioContext on iOS.
+   * Creates the context if needed and resumes it.
+   */
+  resume() {
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
 
   async enqueue(mp3Bytes: ArrayBuffer) {
-    const blob = new Blob([mp3Bytes], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    this.queue.push(url);
+    this.queue.push(mp3Bytes);
     if (!this.playing) this._playNext();
   }
 
-  private _playNext() {
+  private async _playNext() {
     if (this.queue.length === 0) {
       this.playing = false;
+      this.currentSource = null;
       this.onPlayStateChange?.(false);
       return;
     }
     this.playing = true;
     this.onPlayStateChange?.(true);
-    const url = this.queue.shift()!;
-    const audio = new Audio(url);
-    this.current = audio;
-    const cleanup = () => { URL.revokeObjectURL(url); this._playNext(); };
-    audio.onended = cleanup;
-    audio.onerror = cleanup;
-    audio.play().catch(cleanup);
+
+    const bytes = this.queue.shift()!;
+
+    // Lazily create context if resume() wasn't called (non-iOS path)
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+    }
+    // Ensure context is running
+    if (this.ctx.state === 'suspended') {
+      await this.ctx.resume();
+    }
+
+    try {
+      const decoded = await this.ctx.decodeAudioData(bytes);
+      const source = this.ctx.createBufferSource();
+      source.buffer = decoded;
+      source.connect(this.ctx.destination);
+      this.currentSource = source;
+      source.onended = () => this._playNext();
+      source.start();
+    } catch (e) {
+      console.error('AudioPlayer decode error:', e);
+      this._playNext();
+    }
   }
 
   stop() {
-    const urls = this.queue.splice(0);
-    urls.forEach(u => URL.revokeObjectURL(u));
+    this.queue = [];
     this.playing = false;
-    if (this.current) { this.current.pause(); this.current = null; }
+    this.currentSource?.stop();
+    this.currentSource = null;
     this.onPlayStateChange?.(false);
   }
 
-  dispose() { this.stop(); }
+  dispose() {
+    this.stop();
+    this.ctx?.close();
+    this.ctx = null;
+  }
 }
