@@ -25,7 +25,8 @@ sleep 3  # wait for servers to start
 # Unset proxy only for this subshell — your main terminal stays unaffected
 (
   unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
-  ngrok start --all --config "$ROOT/scripts/ngrok.yml" 2>&1 &
+  NGROK_DEFAULT="$HOME/Library/Application Support/ngrok/ngrok.yml"
+  ngrok start --all --config "$NGROK_DEFAULT" --config "$ROOT/scripts/ngrok.yml" 2>&1 &
   NGROK_PID=$!
   echo "ngrok PID: $NGROK_PID"
 )
