@@ -681,6 +681,7 @@ export default function Home() {
             <div className="space-y-1.5">
               <label className="block text-xs text-gray-400">WebSocket URL</label>
               <input
+                suppressHydrationWarning
                 type="text"
                 value={settings.wsUrl}
                 onChange={(e) => setSettings(s => ({ ...s, wsUrl: e.target.value }))}
@@ -697,6 +698,7 @@ export default function Home() {
               <div className="space-y-1.5">
                 <label className="block text-xs text-gray-400">Provider</label>
                 <select
+                  suppressHydrationWarning
                   value={settings.asrProvider}
                   onChange={(e) => setSettings(s => ({ ...s, asrProvider: e.target.value }))}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500/60 transition-colors"
@@ -711,6 +713,7 @@ export default function Home() {
                 <div className="space-y-1.5">
                   <label className="block text-xs text-gray-400">API Key</label>
                   <input
+                    suppressHydrationWarning
                     type="password"
                     value={settings.asrApiKey}
                     onChange={(e) => setSettings(s => ({ ...s, asrApiKey: e.target.value }))}
@@ -728,6 +731,7 @@ export default function Home() {
             <div className="space-y-1.5">
               <label className="block text-xs text-gray-400">Provider</label>
               <select
+                suppressHydrationWarning
                 value={settings.agentProvider}
                 onChange={(e) => setSettings(s => ({ ...s, agentProvider: e.target.value }))}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500/60 transition-colors"
@@ -746,6 +750,7 @@ export default function Home() {
             <div className="space-y-1.5">
               <label className="block text-xs text-gray-400">Provider</label>
               <select
+                suppressHydrationWarning
                 value={settings.ttsProvider}
                 onChange={(e) => setSettings(s => ({ ...s, ttsProvider: e.target.value }))}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500/60 transition-colors"
