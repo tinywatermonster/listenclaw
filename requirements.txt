@@ -14,6 +14,11 @@ faster-whisper>=1.0.0
 webrtcvad-wheels>=2.0.10  # use this instead of webrtcvad (Mac/Python 3.11 compatible)
 numpy>=1.24.0
 
+# Agent (optional, install based on provider)
+# openai>=1.30.0       # optional, install if using OpenAI agent
+# anthropic>=0.25.0    # optional, install if using Claude agent
+# httpx is already included above for Ollama
+
 # TTS
 edge-tts>=6.1.9
 # elevenlabs>=1.0.0  # optional, install if using ElevenLabs
