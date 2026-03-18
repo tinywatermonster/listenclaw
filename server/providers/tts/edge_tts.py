@@ -1,6 +1,9 @@
 import io
+import logging
 from typing import AsyncIterator
 from .base import BaseTTS, TTSConfig, register
+
+logger = logging.getLogger(__name__)
 
 
 @register("edge_tts")
@@ -30,7 +33,11 @@ class EdgeTTS(BaseTTS):
         rate = (config and config.rate) or self._default_rate
         volume = (config and config.volume) or self._default_volume
 
+        logger.info("TTS synthesizing: %r (voice=%s)", text[:40], voice)
         communicate = edge_tts.Communicate(text, voice, rate=rate, volume=volume)
+        chunk_count = 0
         async for chunk in communicate.stream():
             if chunk["type"] == "audio":
+                chunk_count += 1
                 yield chunk["data"]
+        logger.info("TTS done: %d chunks for %r", chunk_count, text[:40])

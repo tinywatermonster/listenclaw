@@ -59,39 +59,23 @@ export class MicCapture {
 }
 
 export class AudioPlayer {
-  private ctx: AudioContext | null = null;
-  private queue: AudioBuffer[] = [];
+  private queue: string[] = []; // object URLs of MP3 blobs
   private playing = false;
-  private nextStart = 0;
+  private current: HTMLAudioElement | null = null;
   private onPlayStateChange?: (playing: boolean) => void;
 
   constructor(onPlayStateChange?: (playing: boolean) => void) {
     this.onPlayStateChange = onPlayStateChange;
   }
 
-  private getCtx(): AudioContext {
-    if (!this.ctx || this.ctx.state === 'closed') {
-      this.ctx = new AudioContext();
-    }
-    return this.ctx;
-  }
-
-  /** Call during a user gesture so the AudioContext isn't blocked by autoplay policy. */
-  resume() {
-    const ctx = this.getCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-  }
+  /** No-op — HTML5 Audio doesn't need AudioContext gesture unlock. */
+  resume() {}
 
   async enqueue(mp3Bytes: ArrayBuffer) {
-    const ctx = this.getCtx();
-    if (ctx.state === 'suspended') await ctx.resume();
-    try {
-      const buffer = await ctx.decodeAudioData(mp3Bytes);
-      this.queue.push(buffer);
-      if (!this.playing) this._playNext();
-    } catch (e) {
-      console.error('Audio decode error:', e);
-    }
+    const blob = new Blob([mp3Bytes], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    this.queue.push(url);
+    if (!this.playing) this._playNext();
   }
 
   private _playNext() {
@@ -100,32 +84,24 @@ export class AudioPlayer {
       this.onPlayStateChange?.(false);
       return;
     }
-    const ctx = this.getCtx();
     this.playing = true;
     this.onPlayStateChange?.(true);
-    const buffer = this.queue.shift()!;
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-    const now = ctx.currentTime;
-    const start = Math.max(now, this.nextStart);
-    source.start(start);
-    this.nextStart = start + buffer.duration;
-    source.onended = () => this._playNext();
+    const url = this.queue.shift()!;
+    const audio = new Audio(url);
+    this.current = audio;
+    const cleanup = () => { URL.revokeObjectURL(url); this._playNext(); };
+    audio.onended = cleanup;
+    audio.onerror = cleanup;
+    audio.play().catch(cleanup);
   }
 
   stop() {
-    this.queue = [];
+    const urls = this.queue.splice(0);
+    urls.forEach(u => URL.revokeObjectURL(u));
     this.playing = false;
-    this.nextStart = 0;
-    // Do NOT close the AudioContext — on iOS Safari a closed context cannot be
-    // resumed without a new user gesture, causing TTS to silently fail.
+    if (this.current) { this.current.pause(); this.current = null; }
     this.onPlayStateChange?.(false);
   }
 
-  dispose() {
-    this.stop();
-    this.ctx?.close();
-    this.ctx = null;
-  }
+  dispose() { this.stop(); }
 }
