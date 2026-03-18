@@ -19,6 +19,7 @@ type AppState = {
   messages: Message[];
   currentAsrText: string;
   wsUrl: string;
+  queuedCount: number;
 };
 
 type Action =
@@ -29,14 +30,17 @@ type Action =
   | { type: 'START_ASSISTANT_MESSAGE'; id: string }
   | { type: 'APPEND_ASSISTANT_CHUNK'; id: string; text: string }
   | { type: 'FINISH_ASSISTANT_MESSAGE'; id: string; text: string }
-  | { type: 'SET_WS_URL'; url: string };
+  | { type: 'SET_WS_URL'; url: string }
+  | { type: 'SET_QUEUED_COUNT'; count: number };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_CONNECTED':
       return { ...state, connected: action.connected };
     case 'SET_PIPELINE_STATE':
-      return { ...state, pipelineState: action.state };
+      return { ...state, pipelineState: action.state, queuedCount: 0 };
+    case 'SET_QUEUED_COUNT':
+      return { ...state, queuedCount: action.count };
     case 'SET_ASR_TEXT':
       return { ...state, currentAsrText: action.text };
     case 'PUSH_USER_MESSAGE':
@@ -140,6 +144,7 @@ export default function Home() {
     pipelineState: 'disconnected',
     connected: false,
     messages: [],
+    queuedCount: 0,
     currentAsrText: '',
     wsUrl: 'ws://localhost:8765/ws',
   });
@@ -198,6 +203,10 @@ export default function Home() {
 
         case 'state':
           dispatch({ type: 'SET_PIPELINE_STATE', state: event.state });
+          break;
+
+        case 'queued':
+          dispatch({ type: 'SET_QUEUED_COUNT', count: event.position });
           break;
 
         case 'asr_result':
@@ -539,10 +548,15 @@ export default function Home() {
       {/* ─── Mic Button Area ─── */}
       <div className="flex flex-col items-center gap-3 py-7 border-t border-gray-800/60 bg-gray-900/20">
         {/* State label */}
-        <div className="h-4 flex items-center">
+        <div className="h-4 flex items-center gap-2">
           <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-medium">
             {stateLabel}
           </span>
+          {state.queuedCount > 0 && (
+            <span className="text-[10px] bg-indigo-600/70 text-indigo-200 rounded-full px-1.5 py-0.5 leading-none">
+              +{state.queuedCount} queued
+            </span>
+          )}
         </div>
 
         {/* Mic button */}

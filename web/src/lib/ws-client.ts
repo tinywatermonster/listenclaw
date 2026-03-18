@@ -2,6 +2,7 @@ export type PipelineState = 'idle' | 'wake' | 'listening' | 'processing' | 'spea
 
 export type WsEvent =
   | { type: 'state'; state: PipelineState }
+  | { type: 'queued'; position: number }
   | { type: 'asr_result'; text: string }
   | { type: 'agent_chunk'; text: string }
   | { type: 'agent_done'; text: string }

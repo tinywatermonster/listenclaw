@@ -103,8 +103,11 @@ class Session:
 
         # Cancellation token for TTS: replaced on each new utterance
         self._tts_cancel: asyncio.Event = asyncio.Event()
-        # Only one speech pipeline runs at a time; cancel previous on new input
+        # Current speech pipeline task
         self._speech_task: asyncio.Task | None = None
+        # Utterance queue: PTT audio waits here while a pipeline is running
+        self._utterance_queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self._queue_worker_task: asyncio.Task | None = None
 
         audio_cfg = AudioEngineConfig(
             sample_rate=get(cfg, "audio", "sample_rate", default=16000),
@@ -240,9 +243,41 @@ class Session:
         except asyncio.CancelledError:
             pass
 
+    # ── Utterance queue ───────────────────────────────────────────────────
+
+    async def _queue_worker(self):
+        """Process utterances one at a time from the queue."""
+        while True:
+            try:
+                pcm = await self._utterance_queue.get()
+            except asyncio.CancelledError:
+                break
+            self._tts_cancel = asyncio.Event()
+            await self._send({"type": "state", "state": "processing"})
+            self._speech_task = asyncio.create_task(self._handle_speech(pcm))
+            try:
+                await self._speech_task
+            except asyncio.CancelledError:
+                pass
+            finally:
+                self._utterance_queue.task_done()
+
+    async def _clear_utterance_queue(self):
+        """Drain the queue and cancel the in-flight speech task."""
+        while not self._utterance_queue.empty():
+            try:
+                self._utterance_queue.get_nowait()
+                self._utterance_queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+        self._tts_cancel.set()
+        if self._speech_task and not self._speech_task.done():
+            self._speech_task.cancel()
+
     # ── WebSocket message loop ────────────────────────────────────────────
 
     async def handle(self):
+        self._queue_worker_task = asyncio.create_task(self._queue_worker())
         while True:
             try:
                 raw = await self._ws.receive_text()
@@ -257,20 +292,21 @@ class Session:
                 pcm = base64.b64decode(msg["data"])
                 await self.engine.push_audio(pcm)
             elif msg_type == "ptt_audio":
-                # PTT mode: full utterance arrives at once — bypass VAD, process directly
+                # PTT mode: enqueue utterance; queue worker processes them serially
                 pcm = base64.b64decode(msg["data"])
-                if self._speech_task and not self._speech_task.done():
-                    self._tts_cancel.set()
-                    self._speech_task.cancel()
-                self._tts_cancel = asyncio.Event()
-                await self._send({"type": "state", "state": "processing"})
-                self._speech_task = asyncio.create_task(self._handle_speech(pcm))
+                await self._utterance_queue.put(pcm)
+                pending = self._utterance_queue.qsize()
+                if pending > 0:
+                    await self._send({"type": "queued", "position": pending})
             elif msg_type == "interrupt":
+                await self._clear_utterance_queue()
                 await self.engine.interrupt()
             elif msg_type == "ping":
                 await self._send({"type": "pong"})
 
     async def close(self):
+        if self._queue_worker_task:
+            self._queue_worker_task.cancel()
         await self.asr.close()
         await self.agent.close()
         await self.tts.close()
