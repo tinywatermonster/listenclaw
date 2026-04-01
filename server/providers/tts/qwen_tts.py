@@ -24,9 +24,19 @@ class QwenTTS(BaseTTS):
         if self._pipeline is not None:
             return
         logger.info("Loading Qwen3-TTS model: %s", self._model_id)
-        from qwen_tts import QwenTTSPipeline
-        self._pipeline = QwenTTSPipeline(self._model_id)
-        logger.info("Qwen3-TTS model loaded")
+        from qwen_tts import Qwen3TTSModel
+        self._pipeline = Qwen3TTSModel.from_pretrained(self._model_id)
+        speakers = self._pipeline.get_supported_speakers()
+        logger.info("Qwen3-TTS model loaded, speakers: %s", speakers[:5])
+        # Warm up: run a silent inference so code_predictor initializes once
+        voice = self._voice or "Chelsie"
+        if voice.lower() not in [s.lower() for s in speakers]:
+            voice = speakers[0]
+        try:
+            self._pipeline.generate_custom_voice(text="嗯", speaker=voice, language="chinese")
+            logger.info("Qwen3-TTS warm-up done")
+        except Exception as e:
+            logger.warning("Qwen3-TTS warm-up failed (non-fatal): %s", e)
 
     async def synthesize(self, text: str, config: TTSConfig | None = None) -> bytes:
         chunks = []
@@ -38,25 +48,25 @@ class QwenTTS(BaseTTS):
         self, text: str, config: TTSConfig | None = None
     ) -> AsyncIterator[bytes]:
         import asyncio
+        import io
+        import numpy as np
+        import scipy.io.wavfile
         self._load()
 
-        voice = (config and config.voice) or self._voice
-        logger.info("Qwen3-TTS synthesizing: %r (voice=%s)", text[:40], voice)
+        voice = (config and config.voice) or self._voice or "Chelsie"
+        logger.info("Qwen3-TTS synthesizing: %r (speaker=%s)", text[:40], voice)
 
         def _run():
-            import tempfile, os
-            # qwen-tts writes to a file; we read it back as bytes
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                out_path = f.name
-            try:
-                kwargs = {"text": text, "output_path": out_path}
-                if voice:
-                    kwargs["voice"] = voice
-                self._pipeline.generate(**kwargs)
-                with open(out_path, "rb") as f:
-                    return f.read()
-            finally:
-                os.unlink(out_path)
+            arrays, sample_rate = self._pipeline.generate_custom_voice(
+                text=text,
+                speaker=voice,
+                language="chinese",
+            )
+            audio = arrays[0]  # np.ndarray float32
+            # Convert to int16 WAV in memory
+            buf = io.BytesIO()
+            scipy.io.wavfile.write(buf, sample_rate, (audio * 32767).astype(np.int16))
+            return buf.getvalue()
 
         wav_bytes = await asyncio.get_event_loop().run_in_executor(None, _run)
 

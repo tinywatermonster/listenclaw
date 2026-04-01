@@ -14,6 +14,44 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Hardware LED Animations ───────────────────────────────────────────────── */
+
+@keyframes hw-breathe {
+  0%, 100% { opacity: 0.3; transform: scale(0.88); }
+  50%       { opacity: 1;   transform: scale(1); }
+}
+@keyframes hw-pulse-fast {
+  0%, 100% { opacity: 0.6; transform: scale(0.92); }
+  50%       { opacity: 1;   transform: scale(1.06); }
+}
+@keyframes hw-spin-glow {
+  0%   { filter: hue-rotate(0deg)   brightness(0.9); }
+  50%  { filter: hue-rotate(30deg)  brightness(1.3); }
+  100% { filter: hue-rotate(0deg)   brightness(0.9); }
+}
+@keyframes hw-wave-glow {
+  0%, 100% { transform: scale(0.94); opacity: 0.7; }
+  25%       { transform: scale(1.04); opacity: 1; }
+  75%       { transform: scale(0.97); opacity: 0.85; }
+}
+@keyframes hw-flash {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  25%       { opacity: 0.2; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.1); }
+  75%       { opacity: 0.2; transform: scale(0.85); }
+}
+@keyframes hw-ring-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.08); }
+}
+
+.hw-breathe-slow { animation: hw-breathe      3s ease-in-out infinite; }
+.hw-pulse-fast   { animation: hw-pulse-fast   0.7s ease-in-out infinite; }
+.hw-spin-glow    { animation: hw-spin-glow    1s linear infinite; }
+.hw-wave-glow    { animation: hw-wave-glow    1.2s ease-in-out infinite; }
+.hw-flash        { animation: hw-flash        0.6s ease-in-out 2; }
+.hw-ring         { animation: hw-ring-pulse   2s ease-in-out infinite; }
+
 /* ─── Animations ─────────────────────────────────────────────────────────────── */
 
 /* Listening: pulsing ring around the mic button */

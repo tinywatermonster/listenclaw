@@ -8,14 +8,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 echo "[1/3] Starting backend on :8765..."
 source "$ROOT/.venv/bin/activate" 2>/dev/null || true
 cd "$ROOT"
-python -m uvicorn server.main:app --host 0.0.0.0 --port 8765 &
+DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH" python -m uvicorn server.main:app --host 0.0.0.0 --port 8765 &
 BACKEND_PID=$!
 
 # ── Frontend (with WS proxy) ──────────────────────────────────────────────────
 echo "[2/3] Building frontend..."
 cd "$ROOT/web"
 npm run build 2>&1 | tail -5
-echo "Starting frontend + WS proxy on :3000..."
+FRONTEND_PORT="${PORT:-3000}"
+echo "Starting frontend + WS proxy on :${FRONTEND_PORT}..."
 node server-proxy.mjs &
 FRONTEND_PID=$!
 
@@ -25,7 +26,7 @@ sleep 3
 
 (
   unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
-  ngrok http 3000 --log stdout 2>&1 | grep -E "url=|Tunnel established|started tunnel" &
+  ngrok http "${FRONTEND_PORT}" --log stdout 2>&1 | grep -E "url=|Tunnel established|started tunnel" &
   NGROK_PID=$!
   sleep 3
   # Fetch URL from ngrok API

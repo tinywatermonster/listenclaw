@@ -303,7 +303,6 @@ export default function Home() {
       unsub();
       client.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.wsUrl]);
 
   // ─ Scroll to bottom on new messages ─

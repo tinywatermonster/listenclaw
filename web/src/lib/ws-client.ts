@@ -6,8 +6,7 @@ export type WsEvent =
   | { type: 'asr_result'; text: string }
   | { type: 'agent_chunk'; text: string }
   | { type: 'agent_done'; text: string }
-  | { type: 'tts_chunk'; data: string }
-  | { type: 'tts_segment_done' }
+  | { type: 'task_complete'; text: string; audio: string }
   | { type: 'tts_done' }
   | { type: 'error'; message: string }
   | { type: 'connected' }
